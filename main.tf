@@ -14,26 +14,6 @@ resource "aws_key_pair" "webserver_key" {
  public_key = tls_private_key.webserver_private_key.public_key_openssh
 }
 
-
-#Create EC2 machine
-resource "aws_instance" "webserver" {
-  ami           = "ami-0a261c0e5f51090b1"
-  instance_type = "t2.micro" 
-  key_name  = aws_key_pair.webserver_key.key_name
-  security_groups=[aws_security_group.demo_allow_http_ssh.name]
-tags = {
-    Name = "webserver"
-  }
-  connection {
-        type    = "ssh"
-        user    = "ec2-user"
-        host    = aws_instance.webserver.public_ip
-        port    = 22
-        private_key = tls_private_key.webserver_private_key.private_key_pem
-    }
-}
-
-
 # #Create security group
 resource "aws_security_group" "demo_allow_http_ssh" {
   name        = "demo_allow_http"
@@ -43,8 +23,7 @@ ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
- 
+    cidr_blocks = ["0.0.0.0/0"] 
   }
 ingress {
     description = "EFS mount target"
@@ -81,27 +60,41 @@ ingress {
     to_port     = 5432
     protocol    = "tcp"
     security_groups = [aws_security_group.demo_allow_http_ssh.id]
-
   }
 }
 
+#Create EC2 machine
+resource "aws_instance" "webserver" {
+  ami           = "ami-0a261c0e5f51090b1"
+  instance_type = "t2.micro" 
+  key_name  = aws_key_pair.webserver_key.key_name
+  security_groups=[aws_security_group.demo_allow_http_ssh.name]
+tags = {
+    Name = "webserver"
+  }
+  connection {
+        type    = "ssh"
+        user    = "ec2-user"
+        host    = aws_instance.webserver.public_ip
+        port    = 22
+        private_key = tls_private_key.webserver_private_key.private_key_pem
+    }
+}
 
 
-# Create EFS file system
+# Create EFS
 resource "aws_efs_file_system" "efs" {
   creation_token = "dani_efs"
   tags = {
     Name = "dani_efs"
   }
 }
-
 resource "aws_efs_mount_target" "mount" {
   file_system_id = aws_efs_file_system.efs.id
   subnet_id      = aws_instance.webserver.subnet_id
   security_groups = [aws_security_group.demo_allow_http_ssh.id]
 
 }
-
 resource "null_resource" "configure_nfs" {
   depends_on = [aws_efs_mount_target.mount]
    connection {
@@ -125,8 +118,7 @@ resource "null_resource" "configure_nfs" {
 }
 
 
-
-# Create a new load balancer
+# Create ELB
 resource "aws_elb" "demo-elb" {
   name               = "demo-elb"
   availability_zones = ["eu-central-1a"]
@@ -138,7 +130,6 @@ resource "aws_elb" "demo-elb" {
     lb_port           = 80
     lb_protocol       = "http"
   }
-
   health_check {
     healthy_threshold   = 2
     unhealthy_threshold = 5
@@ -146,13 +137,11 @@ resource "aws_elb" "demo-elb" {
     target              = "HTTP:80/"
     interval            = 30
   }
-
   instances                   = [aws_instance.webserver.id]
   cross_zone_load_balancing   = false
   idle_timeout                = 400
   connection_draining         = true
   connection_draining_timeout = 400
-
   tags = {
     Name = "demo_elb"
   }
@@ -169,7 +158,6 @@ resource "aws_db_instance" "dani-db" {
   password             = "147369159d"
   vpc_security_group_ids = [aws_security_group.demo_db_sg.id]
   skip_final_snapshot = true
-
 }
 
 
@@ -188,7 +176,6 @@ resource "aws_cloudwatch_metric_alarm" "dani_alarm" {
     LoadBalancerName = "demo-elb"
 }
 }
-
 
 #Create Ami from EC2
 resource "aws_ami_from_instance" "autoscale_ami" {
@@ -212,13 +199,12 @@ resource "aws_autoscaling_group" "webservers" {
   availability_zones = ["eu-central-1a"]
   desired_capacity   = 1
   max_size           = 3
-  min_size           = 1
+  min_size           = 0
   launch_configuration = aws_launch_configuration.webservers.name
   lifecycle {
     create_before_destroy = true
   }
 }
-
 
 #Create an AWS AutoScaling policy
 resource "aws_autoscaling_policy" "simple_scaling" {
@@ -231,11 +217,11 @@ resource "aws_autoscaling_policy" "simple_scaling" {
 }
 
 #Create an AWS AutoScaling schedule
-resource "aws_autoscaling_schedule" "batchprocess_server_autoscaling_schedule" {
-  scheduled_action_name  = "batchprocess_server_autoscaling_schedule"
+resource "aws_autoscaling_schedule" "server_autoscaling_schedule" {
+  scheduled_action_name  = "server_autoscaling_schedule"
   min_size               = 0
-  max_size               = 4
-  desired_capacity       = 0
+  max_size               = 3
+  desired_capacity       = 1
   start_time             = "2023-01-20T18:00:00Z"
   end_time               = "2023-01-22T06:00:00Z"
   autoscaling_group_name = aws_autoscaling_group.webservers.name
@@ -263,3 +249,4 @@ resource "aws_autoscaling_attachment" "webservers_asg_attachment" {
   autoscaling_group_name = aws_autoscaling_group.webservers.id
   elb                    = aws_elb.demo-elb.id
 }
+
