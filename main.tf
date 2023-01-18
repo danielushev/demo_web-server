@@ -14,6 +14,12 @@ resource "aws_key_pair" "webserver_key" {
  public_key = tls_private_key.webserver_private_key.public_key_openssh
 }
 
+#Create variable
+variable "all_traffic" {
+  type        = string
+  description = "test variable for all traffic subnet"
+}
+
 # #Create security group
 resource "aws_security_group" "demo_allow_http_ssh" {
   name        = "demo_allow_http"
@@ -23,27 +29,27 @@ ingress {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
+    cidr_blocks = [var.all_traffic] 
   }
 ingress {
     description = "EFS mount target"
     from_port   = 2049
     to_port     = 2049
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all_traffic]
   }  
 ingress {
     description = "ssh"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all_traffic]
    } 
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "all"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.all_traffic]
   }
 tags = {
     Name = "allow_http_ssh"
