@@ -177,76 +177,76 @@ resource "aws_cloudwatch_metric_alarm" "dani_alarm" {
 }
 }
 
-#Create Ami from EC2
-resource "aws_ami_from_instance" "autoscale_ami" {
-  name               = "autoscale_ami"
-  source_instance_id = aws_instance.webserver.id
-}
+# #Create Ami from EC2
+# resource "aws_ami_from_instance" "autoscale_ami" {
+#   name               = "autoscale_ami"
+#   source_instance_id = aws_instance.webserver.id
+# }
 
-#Set up autoscaling
+# #Set up autoscaling
 
-#Create launch configuration template
-resource "aws_launch_configuration" "webservers" {
-  name   = "webservers_launch_config"
-  image_id      = aws_ami_from_instance.autoscale_ami.id
-  instance_type = "t2.micro"
-  security_groups  = [aws_security_group.demo_allow_http_ssh.id]
-  key_name  = aws_key_pair.webserver_key.key_name
-}
+# #Create launch configuration template
+# resource "aws_launch_configuration" "webservers" {
+#   name   = "webservers_launch_config"
+#   image_id      = aws_ami_from_instance.autoscale_ami.id
+#   instance_type = "t2.micro"
+#   security_groups  = [aws_security_group.demo_allow_http_ssh.id]
+#   key_name  = aws_key_pair.webserver_key.key_name
+# }
 
-#Create the autoscaling group
-resource "aws_autoscaling_group" "webservers" {
-  availability_zones = ["eu-central-1a"]
-  desired_capacity   = 1
-  max_size           = 3
-  min_size           = 0
-  launch_configuration = aws_launch_configuration.webservers.name
-  lifecycle {
-    create_before_destroy = true
-  }
-}
+# #Create the autoscaling group
+# resource "aws_autoscaling_group" "webservers" {
+#   availability_zones = ["eu-central-1a"]
+#   desired_capacity   = 1
+#   max_size           = 3
+#   min_size           = 0
+#   launch_configuration = aws_launch_configuration.webservers.name
+#   lifecycle {
+#     create_before_destroy = true
+#   }
+# }
 
-#Create an AWS AutoScaling policy
-resource "aws_autoscaling_policy" "simple_scaling" {
-  name                   = "simple_scaling_policy"
-  scaling_adjustment     = 3
-  policy_type            = "SimpleScaling"
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 100
-  autoscaling_group_name = aws_autoscaling_group.webservers.name
-}
+# #Create an AWS AutoScaling policy
+# resource "aws_autoscaling_policy" "simple_scaling" {
+#   name                   = "simple_scaling_policy"
+#   scaling_adjustment     = 3
+#   policy_type            = "SimpleScaling"
+#   adjustment_type        = "ChangeInCapacity"
+#   cooldown               = 100
+#   autoscaling_group_name = aws_autoscaling_group.webservers.name
+# }
 
-#Create an AWS AutoScaling schedule
-resource "aws_autoscaling_schedule" "server_autoscaling_schedule" {
-  scheduled_action_name  = "server_autoscaling_schedule"
-  min_size               = 0
-  max_size               = 3
-  desired_capacity       = 1
-  start_time             = "2023-01-20T18:00:00Z"
-  end_time               = "2023-01-22T06:00:00Z"
-  autoscaling_group_name = aws_autoscaling_group.webservers.name
-}
+# #Create an AWS AutoScaling schedule
+# resource "aws_autoscaling_schedule" "server_autoscaling_schedule" {
+#   scheduled_action_name  = "server_autoscaling_schedule"
+#   min_size               = 0
+#   max_size               = 3
+#   desired_capacity       = 1
+#   start_time             = "2023-01-20T18:00:00Z"
+#   end_time               = "2023-01-22T06:00:00Z"
+#   autoscaling_group_name = aws_autoscaling_group.webservers.name
+# }
 
-#Create an AutoScaling group notification
-resource "aws_autoscaling_notification" "webserver_asg_notifications" {
-  group_names = [
-    aws_autoscaling_group.webservers.name,
-  ]
-  notifications = [
-    "autoscaling:EC2_INSTANCE_LAUNCH",
-    "autoscaling:EC2_INSTANCE_TERMINATE",
-    "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
-    "autoscaling:EC2_INSTANCE_TERMINATE_ERROR",
-  ]
-  topic_arn = aws_sns_topic.webserver_topic.arn
-}
-resource "aws_sns_topic" "webserver_topic" {
-  name = "webserver_topic"
-}
+# #Create an AutoScaling group notification
+# resource "aws_autoscaling_notification" "webserver_asg_notifications" {
+#   group_names = [
+#     aws_autoscaling_group.webservers.name,
+#   ]
+#   notifications = [
+#     "autoscaling:EC2_INSTANCE_LAUNCH",
+#     "autoscaling:EC2_INSTANCE_TERMINATE",
+#     "autoscaling:EC2_INSTANCE_LAUNCH_ERROR",
+#     "autoscaling:EC2_INSTANCE_TERMINATE_ERROR",
+#   ]
+#   topic_arn = aws_sns_topic.webserver_topic.arn
+# }
+# resource "aws_sns_topic" "webserver_topic" {
+#   name = "webserver_topic"
+# }
 
-#Create an AutoScaling attachment to ELB
-resource "aws_autoscaling_attachment" "webservers_asg_attachment" {
-  autoscaling_group_name = aws_autoscaling_group.webservers.id
-  elb                    = aws_elb.demo-elb.id
-}
+# #Create an AutoScaling attachment to ELB
+# resource "aws_autoscaling_attachment" "webservers_asg_attachment" {
+#   autoscaling_group_name = aws_autoscaling_group.webservers.id
+#   elb                    = aws_elb.demo-elb.id
+# }
 
