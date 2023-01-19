@@ -78,13 +78,6 @@ resource "aws_instance" "webserver" {
 tags = {
     Name = "webserver"
   }
-  connection {
-        type    = "ssh"
-        user    = "ec2-user"
-        host    = aws_instance.webserver.public_ip
-        port    = 22
-        private_key = tls_private_key.webserver_private_key.private_key_pem
-    }
 }
 
 
